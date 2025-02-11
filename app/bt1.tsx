@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   Image,
   StyleSheet,
-  FlatList
+  FlatList,
+  Alert,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  Button,
 } from 'react-native';
 
 type ContactType = {
@@ -14,7 +19,7 @@ type ContactType = {
   photo: string;
 };
 
-const DATA: ContactType[] = [
+const initialData: ContactType[] = [
   {
     name: 'Nguyễn Thị A',
     email: 'a@gmail.com',
@@ -77,13 +82,10 @@ const DATA: ContactType[] = [
   },
 ];
 
-
-const ContactItem: React.FC<{ contact: ContactType }> = ({ contact }) => {
+const ContactItem: React.FC<{ contact: ContactType; onDelete: () => void; onEdit: () => void }> = ({ contact, onDelete, onEdit }) => {
   return (
     <View style={styles.listItem}>
-      {/* <Image source={{ uri: contact.photo }} style={styles.avatar} /> //khong hien thi anh dang tim cach fix */}
-
-      <Image source={require('../assets/images/anhme.png')} style={styles.avatar} />
+      <Image source={{ uri: contact.photo }} style={styles.avatar} />
 
       <View style={styles.bodyItem}>
         <Text style={styles.nameText}>{contact.name}</Text>
@@ -91,19 +93,80 @@ const ContactItem: React.FC<{ contact: ContactType }> = ({ contact }) => {
         <Text style={styles.positionText}>{contact.position}</Text>
       </View>
 
-      <Text style={styles.callText}>Call</Text>
+      <View style={styles.buttonGroup}>
+        <TouchableOpacity style={styles.editButton} onPress={onEdit}>
+          <Text style={styles.buttonText}>Sửa</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteButton} onPress={onDelete}>
+          <Text style={styles.buttonText}>Xóa</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
-const bt1 = () => {
+const ContactList = () => {
+  const [contacts, setContacts] = useState<ContactType[]>(initialData);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingContact, setEditingContact] = useState<ContactType | null>(null);
+  const [newName, setNewName] = useState('');
+
+  // Hàm lấy chữ cuối cùng trong tên
+  const generateEmail = (name: string) => {
+    const nameParts = name.trim().split(' ');
+    const lastName = nameParts[nameParts.length - 1].toLowerCase(); // Lấy chữ cuối cùng
+    return `${lastName}@gmail.com`;
+  };
+
+  const handleEdit = (contact: ContactType) => {
+    setEditingContact(contact);
+    setNewName(contact.name);
+    setModalVisible(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingContact) {
+      const updatedContacts = contacts.map(contact =>
+        contact.email === editingContact.email
+          ? { ...contact, name: newName, email: generateEmail(newName) }
+          : contact
+      );
+      setContacts(updatedContacts);
+      setModalVisible(false);
+      setEditingContact(null);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
-        data={DATA}
-        keyExtractor={(item) => item.email}
-        renderItem={({ item }) => <ContactItem contact={item} />}
+        data={contacts}
+        keyExtractor={item => item.email}
+        renderItem={({ item }) => (
+          <ContactItem contact={item} onDelete={() => setContacts(contacts.filter(c => c.email !== item.email))} onEdit={() => handleEdit(item)} />
+        )}
       />
+
+      {/* Modal chỉnh sửa */}
+      <Modal visible={modalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Chỉnh sửa thông tin</Text>
+            <TextInput
+              style={styles.input}
+              value={newName}
+              onChangeText={setNewName}
+              placeholder="Nhập tên mới"
+            />
+            <Text style={styles.emailPreview}>Email mới: {generateEmail(newName)}</Text>
+            <View style={styles.modalButtons}>
+              <Button title="Hủy" onPress={() => setModalVisible(false)} color="red" />
+              <Button title="Lưu" onPress={handleSaveEdit} color="green" />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -129,7 +192,7 @@ const styles = StyleSheet.create({
   },
   bodyItem: {
     flex: 1,
-    alignItems: 'center',
+    marginLeft: 10,
   },
   nameText: {
     fontSize: 16,
@@ -145,11 +208,61 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 2,
   },
-  callText: {
-    color: 'green',
-    fontSize: 16,
+  buttonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#3498db',
+    padding: 8,
+    borderRadius: 5,
+    marginRight: 5,
+  },
+  deleteButton: {
+    backgroundColor: '#e74c3c',
+    padding: 8,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: '#fff',
     fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: 300,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+  },
+  emailPreview: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 15,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
   },
 });
 
-export default bt1;
+export default ContactList;
